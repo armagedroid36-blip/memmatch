@@ -11,9 +11,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/icon-192.png', 'icons/icon-512.png'],
       manifest: {
-        name: 'MemMatch — мемный дейтинг',
-        short_name: 'MemMatch',
-        description: 'Лента мемов: лайк/скип, мэтч по совпадению вкусов',
+        name: 'Memder',
+        short_name: 'Memder',
+        description: 'Находи людей по вкусу в мемах',
         lang: 'ru',
         start_url: '/',
         scope: '/',

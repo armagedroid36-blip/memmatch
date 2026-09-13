@@ -1,13 +1,23 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { t } from '../i18n/ru'
 
-export default function AuthScreen() {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signup')
+interface Props {
+  initialMode: 'signup' | 'signin'
+  onBack: () => void
+}
+
+export default function AuthScreen({ initialMode, onBack }: Props) {
+  const [mode, setMode] = useState<'signin' | 'signup'>(initialMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
+
+  useEffect(() => {
+    setMode(initialMode)
+  }, [initialMode])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -16,15 +26,15 @@ export default function AuthScreen() {
     setInfo(null)
     try {
       if (mode === 'signup') {
-        const { data, error } = await supabase.auth.signUp({ email, password })
-        if (error) throw error
-        if (!data.session) setInfo('Проверь почту и подтверди регистрацию.')
+        const { data, error: err } = await supabase.auth.signUp({ email, password })
+        if (err) throw err
+        if (!data.session) setInfo(t('authConfirmEmail'))
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
+        const { error: err } = await supabase.auth.signInWithPassword({ email, password })
+        if (err) throw err
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не получилось. Попробуй ещё раз.')
+      setError(err instanceof Error ? err.message : t('errorGeneric'))
     } finally {
       setBusy(false)
     }
@@ -32,13 +42,15 @@ export default function AuthScreen() {
 
   return (
     <div className="screen auth">
-      <h1 className="brand">MemMatch</h1>
-      <p className="muted">Свайпай мемы. Находи тех, у кого такой же юмор.</p>
+      <button className="link back" onClick={onBack}>
+        ← {t('authBack')}
+      </button>
+      <h1 className="brand">{t('authTitle')}</h1>
       <form onSubmit={submit} className="card form">
         <input
           type="email"
           required
-          placeholder="почта"
+          placeholder={t('authEmail')}
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -47,7 +59,7 @@ export default function AuthScreen() {
           type="password"
           required
           minLength={6}
-          placeholder="пароль (от 6 символов)"
+          placeholder={t('authPassword')}
           autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -55,11 +67,11 @@ export default function AuthScreen() {
         {error && <div className="error">{error}</div>}
         {info && <div className="info">{info}</div>}
         <button className="primary" type="submit" disabled={busy}>
-          {busy ? '…' : mode === 'signup' ? 'Создать аккаунт' : 'Войти'}
+          {busy ? '…' : mode === 'signup' ? t('authSignup') : t('authSignin')}
         </button>
       </form>
       <button className="link" onClick={() => setMode(mode === 'signup' ? 'signin' : 'signup')}>
-        {mode === 'signup' ? 'Уже есть аккаунт — войти' : 'Нет аккаунта — создать'}
+        {mode === 'signup' ? t('authSwitchToSignin') : t('authSwitchToSignup')}
       </button>
     </div>
   )

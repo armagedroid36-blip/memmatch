@@ -1,72 +1,109 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { fetchCategories, fetchDeck, rateMeme } from '../lib/api'
-import type { AppUser, Category, Meme, RatingValue } from '../types'
+import { DECK_BATCH, PREFETCH_AT, fetchDeck, rateMeme } from '../lib/api'
+import { t } from '../i18n/ru'
+import type { AppUser, Meme, RatingValue } from '../types'
 
 interface Props {
   user: AppUser
   onSignOut: () => void
 }
 
+const SWIPE_THRESHOLD = 80
+
 export default function FeedScreen({ user, onSignOut }: Props) {
-  const [categories, setCategories] = useState<Category[]>([])
-  const [categoryId, setCategoryId] = useState<number | undefined>(undefined)
   const [deck, setDeck] = useState<Meme[]>([])
   const [index, setIndex] = useState(0)
   const [likes, setLikes] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const touchX = useRef<number | null>(null)
+  const [drag, setDrag] = useState<{ x: number; y: number; active: boolean }>({
+    x: 0,
+    y: 0,
+    active: false,
+  })
+  const start = useRef<{ x: number; y: number } | null>(null)
+  const loadingMore = useRef(false)
 
-  const load = useCallback(
-    async (cat?: number) => {
-      setLoading(true)
-      setError(null)
-      try {
-        const next = await fetchDeck(user.id, cat)
-        setDeck(next)
-        setIndex(0)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Не загрузилась лента.')
-      } finally {
-        setLoading(false)
-      }
-    },
-    [user.id]
-  )
-
-  useEffect(() => {
-    void fetchCategories().then(setCategories).catch(() => setCategories([]))
+  /** Догрузка пачки: оценённые не приходят из get_deck, дубликаты отсекаем по id. */
+  const loadBatch = useCallback(async () => {
+    if (loadingMore.current) return
+    loadingMore.current = true
+    try {
+      const batch = await fetchDeck(undefined, DECK_BATCH)
+      setDeck((prev) => {
+        const known = new Set(prev.map((m) => m.id))
+        return [...prev, ...batch.filter((m) => !known.has(m.id))]
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('feedErrorLoad'))
+    } finally {
+      loadingMore.current = false
+    }
   }, [])
 
+  // первая пачка
   useEffect(() => {
-    void load(categoryId)
-  }, [categoryId, load])
+    void (async () => {
+      setLoading(true)
+      setDeck([])
+      setIndex(0)
+      await loadBatch()
+      setLoading(false)
+    })()
+  }, [loadBatch])
+
+  // prefetch за PREFETCH_AT карточек до конца пачки
+  useEffect(() => {
+    if (loading) return
+    if (deck.length - index <= PREFETCH_AT && deck.length > 0) void loadBatch()
+  }, [index, deck.length, loading, loadBatch])
 
   const current = deck[index]
   const next = deck[index + 1]
 
-  const handleRate = useCallback(
+  const rate = useCallback(
     (value: RatingValue) => {
       if (!current) return
+      // оптимистично: карточка сразу уходит, счётчик меняется
       setIndex((i) => i + 1)
       if (value === 'like') setLikes((l) => l + 1)
-      void rateMeme(user.id, current.id, value).catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : 'Оценка не сохранилась.')
+      void rateMeme(user.id, current.id, value).catch(() => {
+        setError(t('feedErrorRating'))
+        setIndex((i) => Math.max(0, i - 1)) // возвращаем карточку, если запись не прошла
       })
     },
     [current, user.id]
   )
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchX.current = e.touches[0].clientX
+  const onPointerDown = (e: React.PointerEvent) => {
+    start.current = { x: e.clientX, y: e.clientY }
+    setDrag({ x: 0, y: 0, active: true })
   }
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (touchX.current === null) return
-    const dx = e.changedTouches[0].clientX - touchX.current
-    touchX.current = null
-    if (Math.abs(dx) < 60) return
-    handleRate(dx > 0 ? 'like' : 'dislike')
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!start.current) return
+    const x = e.clientX - start.current.x
+    const y = e.clientY - start.current.y
+    // не мешаем вертикальной прокрутке страницы: реагируем только на явный свайп
+    if (Math.abs(x) > 10 || Math.abs(y) > 10) setDrag({ x, y, active: true })
   }
+  const onPointerUp = () => {
+    if (!start.current) return
+    const { x, y } = drag
+    start.current = null
+    setDrag({ x: 0, y: 0, active: false })
+    if (Math.abs(x) > SWIPE_THRESHOLD) {
+      rate(x > 0 ? 'like' : 'dislike')
+    } else if (y < -SWIPE_THRESHOLD) {
+      rate('like') // свайп вверх = лайк
+    }
+  }
+
+  const cardStyle = drag.active
+    ? {
+        transform: `translate(${drag.x}px, ${drag.y}px) rotate(${drag.x / 30}deg)`,
+        transition: 'none',
+      }
+    : { transform: 'none', transition: 'transform .25s ease' }
 
   return (
     <div className="screen feed">
@@ -74,62 +111,60 @@ export default function FeedScreen({ user, onSignOut }: Props) {
         <div className="who">
           <strong>{user.display_name}</strong>
           <span className="muted small">
-            {[user.age ? `${user.age}` : null, user.city].filter(Boolean).join(' · ') || 'без города'}
+            {[user.age ? `${user.age}` : null, user.city].filter(Boolean).join(' · ') || '—'}
           </span>
         </div>
         <div className="topbar-right">
-          <span className="pill">♥ {likes}</span>
+          <span className="pill">👍 {likes}</span>
           <button className="link small" onClick={onSignOut}>
-            выйти
+            {t('signOut')}
           </button>
         </div>
       </header>
 
-      <div className="chips">
-        <button
-          className={categoryId === undefined ? 'chip active' : 'chip'}
-          onClick={() => setCategoryId(undefined)}
-        >
-          все
-        </button>
-        {categories.map((c) => (
-          <button
-            key={c.id}
-            className={categoryId === c.id ? 'chip active' : 'chip'}
-            onClick={() => setCategoryId(c.id)}
-          >
-            {c.name}
-          </button>
-        ))}
-      </div>
-
-      {error && <div className="error">{error}</div>}
+      {error && (
+        <div className="error" onClick={() => setError(null)}>
+          {error}
+        </div>
+      )}
 
       {loading ? (
-        <div className="deck-placeholder">Грузим мемы…</div>
+        <div className="deck-placeholder">{t('feedLoading')}</div>
       ) : current ? (
-        <div className="deck" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-          <div className="meme-card">
-            <img src={current.image_url} alt={current.original_caption ?? 'мем'} loading="eager" />
+        <div className="deck">
+          <div
+            className="deck-card"
+            style={cardStyle}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+          >
+            <div className="card-media">
+              <img src={current.image_url} alt="" loading="eager" decoding="async" />
+            </div>
             {current.original_caption && <p className="caption">{current.original_caption}</p>}
-            <span className="source">{current.source_name}</span>
           </div>
+          {/* следующая карточка греется заранее — переключение без мигания */}
+          {next && (
+            <img className="preload" src={next.image_url} alt="" loading="lazy" decoding="async" />
+          )}
           <div className="actions">
-            <button className="round skip" onClick={() => handleRate('dislike')} aria-label="скип">
-              ✕
+            <button className="btn-round skip" onClick={() => rate('dislike')} aria-label={t('feedSkip')}>
+              ✖
             </button>
-            <button className="round like" onClick={() => handleRate('like')} aria-label="лайк">
-              ♥
+            <button className="btn-round like" onClick={() => rate('like')} aria-label={t('feedLike')}>
+              👍
             </button>
           </div>
-          <p className="muted small center">Свайп вправо — лайк, влево — скип</p>
-          {next && <img className="preload" src={next.image_url} alt="" />}
+          <p className="muted small center hint">{t('feedHint')}</p>
         </div>
       ) : (
         <div className="deck-placeholder">
-          <p>Колода закончилась.</p>
-          <button className="primary" onClick={() => void load(categoryId)}>
-            Обновить
+          <p>{t('feedEmpty')}</p>
+          <p className="muted small">{t('feedEmptyHint')}</p>
+          <button className="primary" onClick={() => void loadBatch()}>
+            {t('feedRefresh')}
           </button>
         </div>
       )}

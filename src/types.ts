@@ -10,12 +10,8 @@ export interface Meme {
   id: string
   image_url: string
   source_name: string
-  source_post_id: string
-  category_id: number | null
   original_caption: string | null
-  published_at: string | null
-  status: MemeStatus
-  created_at: string | null
+  category_id: number | null
 }
 
 export interface AppUser {
@@ -26,8 +22,13 @@ export interface AppUser {
   created_at?: string | null
 }
 
-export interface Rating {
+export interface Match {
   user_id: string
-  meme_id: string
-  value: RatingValue
+  display_name: string
+  age: number | null
+  city: string | null
+  percent: number
+  shared_memes_count: number
 }
+
+export type Tab = 'feed' | 'matches'
