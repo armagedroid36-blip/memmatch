@@ -1,0 +1,22 @@
+name: Collect memes
+
+on:
+  schedule:
+    # каждый день 06:00 UTC (13:00 по Бали) — забираем свежие посты каналов
+    - cron: '0 6 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+      - name: Сбор мемов из Telegram-каналов (boyanu, cats_cats, pu1_tg, lup_tg)
+        run: node scripts/collect-memes.mjs --pages=3 --limit=60
+        env:
+          MEMMATCH_SUPABASE_URL: ${{ secrets.MEMMATCH_SUPABASE_URL }}
+          MEMMATCH_SUPABASE_SERVICE_KEY: ${{ secrets.MEMMATCH_SUPABASE_SERVICE_KEY }}
