@@ -40,6 +40,33 @@ python "$HOME/AppData/Local/hermes/skills/software-development/supabase-integrat
   ixhubsunntcwahigtzsb "$SUPABASE_ACCESS_TOKEN" supabase/migrations/0001_init.sql
 ```
 
+## Сбор мемов (`scripts/collect-memes.mjs`)
+
+Источник — публичный HTML `t.me/s/<канал>` (без аккаунта, без Bot API и токенов). Скрипт достаёт посты с картинкой,
+скачивает файл и **кладёт копию в наш Storage** (bucket `memes`), а в таблицу пишет нашу публичную ссылку:
+хотлинки на `cdn*.telesco.pe` протухают.
+
+| канал | категория | что за канал |
+|---|---|---|
+| `boyanu` | Классика/бояны | Бояны и классика |
+| `cats_cats` | Коты | коты |
+| `pu1_tg` | Мемы | пик4á |
+| `lup_tg` | Путешествия | Лига нишевых путешествий |
+
+```bash
+npm run collect                                       # все каналы, дефолт: 20 страниц × 500 мемов на канал
+node --env-file=.env scripts/collect-memes.mjs --channels=boyanu --pages=1 --limit=5
+node --env-file=.env scripts/collect-memes.mjs --dry  # отчёт без записи
+```
+
+- Дедуп — по `source_post_id` (`<канал>/<post_id>`), повторный запуск добирает только новое (`upsert ... ignoreDuplicates`).
+- **Видео-посты пропускаются намеренно** (решение владельца: видео в проекте не нужно) — берём только картинки.
+  Из-за этого `cats_cats` даёт мало материала: там ~90% постов видео.
+- Витрина `t.me/s/` отдаёт не всю историю канала: у `pu1_tg` доступно ~100 последних постов, дальше страницы пустые.
+  Это ограничение Telegram, не скрипта.
+- Автозапуск: `.github/workflows/collect-memes.yml` — ежедневно 06:00 UTC (13:00 Бали) + ручной запуск,
+  секреты `MEMMATCH_SUPABASE_URL` / `MEMMATCH_SUPABASE_SERVICE_KEY` в репозитории.
+
 ## Запуск
 
 ```bash
@@ -50,6 +77,5 @@ npm run dev
 
 ## Дальше (не в этой итерации)
 
-- Парсер мемов (boyanu / pu1_tg / cats_cats) → Storage `memes` + `insert ... on conflict (source_post_id) do nothing`.
 - RPC `security definer` для расчёта % совместимости (чужие `ratings` через RLS не читаются — считать на сервере).
-- Матчи/чат/гео/премиум/фото-верификация — по явному запросу.
+- Матчи/чат/гео/премиум/фото-верификация — по явному запросу. Видео — не планируется.
