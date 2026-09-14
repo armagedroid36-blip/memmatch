@@ -1,0 +1,25 @@
+# Netlify: Memder (статическая сборка Vite + PWA)
+# Корневой хостинг — base-путь НЕ задаём (site живёт в корне домена).
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# У приложения нет URL-роутинга (экраны переключаются в состоянии),
+# но правило страхует прямые заходы на любой путь.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
