@@ -1,15 +1,25 @@
-# MemMatch
+# Memder (репозиторий memmatch)
+
+Прод: **https://armagedroid36-blip.github.io/memmatch/** — GitHub Pages, авто-деплой из `main`
+(`.github/workflows/deploy-pages.yml`). PWA ставится на телефон: Chrome — «Установить приложение»,
+iPhone — «Поделиться» → «На экран „Домой“».
 
 Мемный дейтинг как PWA: лента мемов, лайк/скип, мэтч = совпадение вкусов. Без чата.
 
-- Прод-домен: пока нет (локально `npm run dev`, предпросмотр — `npm run preview`)
+- Локально: `npm run dev`, предпросмотр сборки — `npm run preview`
+- Имя продукта в интерфейсе и манифесте — **Memder**; репозиторий и проект Supabase остались `memmatch`
 - Supabase-проект: `MemMatch`, ref `ixhubsunntcwahigtzsb`, регион ap-southeast-1 (Singapore)
 - Проект «События на карте» (`xsbtejugutlpkgykiouw`) не используется — ключи и база отдельные
 
+> GitHub Pages на бесплатном тарифе работает только для **публичных** репозиториев (поэтому репозиторий открыт;
+> секретов в коде нет — `.env` в `.gitignore`, anon-ключ Supabase публичный по определению).
+> При переезде на корневой хостинг (Vercel/Netlify) `VITE_BASE` не задавать.
+
 ## Стек
 
-Vite + React + TypeScript, `vite-plugin-pwa` (manifest + workbox service worker, кэш картинок мемов), `@supabase/supabase-js`.
-Mobile-first, тёмная тема, свайп вправо/влево + кнопки.
+Vite + React + TypeScript, `vite-plugin-pwa` (manifest + workbox: precache shell, отдельный кэш картинок из Storage),
+`@supabase/supabase-js`. Стили — свой CSS (`src/index.css`), тёмная тема, акцент `#E66343`, вторичный `#72D2CF`.
+Все тексты — в `src/i18n/ru.ts` (задел под i18n). Mobile-first, лента/мэтчи в нижней навигации.
 
 ## Что уже есть
 
