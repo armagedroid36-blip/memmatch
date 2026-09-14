@@ -2,9 +2,12 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// base нужен для GitHub Pages (сайт живёт по /memmatch/). На корневом хостинге
+// (Vercel/Netlify) ничего не задаём — остаётся '/'.
+const base = process.env.VITE_BASE || '/'
+
 export default defineConfig({
-  // При деплое на GitHub Pages под /memmatch/ поменять на '/memmatch/'
-  base: '/',
+  base,
   plugins: [
     react(),
     VitePWA({
@@ -15,8 +18,8 @@ export default defineConfig({
         short_name: 'Memder',
         description: 'Находи людей по вкусу в мемах',
         lang: 'ru',
-        start_url: '/',
-        scope: '/',
+        start_url: '.',
+        scope: '.',
         display: 'standalone',
         orientation: 'portrait',
         background_color: '#11131a',
