@@ -1,8 +1,12 @@
 # Memder (репозиторий memmatch)
 
-Прод: **https://armagedroid36-blip.github.io/memmatch/** — GitHub Pages, авто-деплой из `main`
-(`.github/workflows/deploy-pages.yml`). PWA ставится на телефон: Chrome — «Установить приложение»,
+Прод: **https://memder-one.vercel.app** — Vercel (проект `memder`, авто-деплой из `main`).
+Зеркала: GitHub Pages **https://armagedroid36-blip.github.io/memmatch/** (`.github/workflows/deploy-pages.yml`)
+и Netlify **https://memder.netlify.app** (из РФ почти не отдаёт ассеты — держим как запасной адрес).
+PWA ставится на телефон: Chrome — «Установить приложение»,
 iPhone — «Поделиться» → «На экран „Домой“».
+
+> Адрес `memder.vercel.app` занят чужим проектом — Vercel выдал `memder-one.vercel.app`.
 
 Мемный дейтинг как PWA: лента мемов, лайк/скип, мэтч = совпадение вкусов. Без чата.
 
